@@ -1,7 +1,7 @@
 /**
- * @file SWDT.h
+ * @file sWDT.h
  * @author silvio3105 (www.github.com/silvio3105)
- * @brief Watchdog header file.
+ * @brief Watchdog header-only driver file.
  * 
  * @copyright Copyright (c) 2023, silvio3105
  * 
