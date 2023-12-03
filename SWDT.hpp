@@ -42,100 +42,172 @@ This License shall be included in all methodal textual files.
 // ----- DEFINES
 #define SWDT_VERSION			"v1.0r1" /**< @brief Driver version string. */
 
-#ifndef SWDT_TIMEOUT
-#define SWDT_TIMEOUT			100 /**< @brief Driver operation timeout in ms. User can redefine it during build. */
-#endif // SWDT_TIMEOUT
-
 
 // ----- NAMESPACES
+/**
+ * @brief Namespace for simple watchdog driver.
+ * 
+ */
 namespace SWDT
 {
 	// MAIN CLASS
+	/**
+	 * @brief Simple watchdog driver API.
+	 * 
+	 * @tparam C Watchdog class. \ref SWDT_IWDG or \ref SWDT_WWDG
+	 */
 	template<class C>
 	class SWDT
 	{
 		public:
-		SWDT(void)
+		/**
+		 * @brief Watchdog object constructor.
+		 * 
+		 * @param timeout Watchdog timeout in ms.
+		 * @return No return value.
+		 */
+		SWDT(uint32_t timeout)
 		{
-
+			static_cast<C*>(this)->init();
+			setTimeout(timeout);
 		}
 
+		/**
+		 * @brief Watchdog object deconstructor.
+		 * 
+		 * @return No return value.
+		 */
 		~SWDT(void)
-		{
-
+		{	
+			freq = 1;
 		}
 
-
-		inline void start() const
+		/**
+		 * @brief Start watchdog.
+		 * 
+		 * @return No return value.
+		 */
+		inline void start()
 		{
-			static_cast<C>(this)->start();
+			static_cast<C*>(this)->start();
 		}
 
-		inline void feed(void) const
+		/**
+		 * @brief Reload watchdog.
+		 * 
+		 * @return No return value.
+		 */
+		inline void feed(void)
 		{
-			static_cast<C>(this)->feed();
+			static_cast<C*>(this)->feed();
 		}
 
-		inline void setTimeout(uint32_t timeout) const
+		/**
+		 * @brief Set watchdog timeout in ms.
+		 * 
+		 * @param timeout Watchdog timeout in ms.
+		 * @return No return value.
+		 */
+		inline void setTimeout(uint32_t timeout)
 		{
-			static_cast<C>(this)->setTimeout(timeout);
+			static_cast<C*>(this)->setTimeout(timeout);
 		}
 
+		/**
+		 * @brief Set watchdog input freqnuency in Hz.
+		 * 
+		 * @param value Input freqnuency in Hz.
+		 * @return No return value.
+		 */
 		inline void setInputFreq(uint32_t value)
 		{
-			static_cast<C>(this)->setInputFreq(value);
+			freq = value;
 		}
+
+		protected:
+		// VARIABLES
+		uint32_t freq = 1; /**< @brief Watchdog input frequency. */
 	};
 
 	// CLASS FOR STM32 IWDG
-	class IWDG : SWDT<IWDG>
+	/** @cond PRIVATE */
+	/**
+	 * @brief STM32 independent watchdog(IWDG) class. 
+	 * 
+	 */
+	class SWDT_IWDG : public SWDT<SWDT_IWDG>
 	{
 		public:
-		IWDG(void)
+		SWDT_IWDG(uint32_t timeout) : SWDT(timeout)
 		{
 
 		}
 
-		~IWDG(void)
+		~SWDT_IWDG(void)
 		{
 
 		}
 
 
-		void start(void) const
+		/**
+		 * @brief Init IWDG object.
+		 * 
+		 */
+		void init(void)
+		{
+			// Set IWDG input freq
+			freq = 40000;
+		}
+
+		/**
+		 * @brief Start IWDG.
+		 * 
+		 * @return No return value.
+		 * 
+		 * @note Once started, IWDG cannot be stopped.
+		 */
+		void start(void)
 		{
 			IWDG->KR = startKey;
 		}
 
-		void feed(void) const
+		/**
+		 * @brief Reload IWDG counter
+		 * 
+		 * @return No return value.
+		 */
+		void feed(void)
 		{
 			IWDG->KR = reloadKey;
 		}
 
-		void setTimeout(uint32_t timeout) const
+		/**
+		 * @brief Set the Timeout object
+		 * 
+		 * @param timeout IWDG timeout in miliseconds.
+		 * @return No return value.
+		 */
+		void setTimeout(uint32_t timeout)
 		{
 			// Set prescaler to max
 			setPrescaler(Prescaler_t::Div256);
 
 			// Set required reload value
 			setReloadValue(timeout / (1000 / (freq / 256)));
-
 		}
-
-		void setInputFreq(uint32_t value)
-		{
-			freq = value;
-		}
-
 
 		private:
 		// CONSTANTS
-		constexpr uint16_t reloadKey = 0xAAAA; /**< @brief Reload key for IWDG. */
-		constexpr uint16_t accessKey = 0x5555; /**< @brief Access key for IWDG. */
-		constexpr uint16_t startKey = 0xCCCC; /**< @brief Start key for IWDG. */
-		constexpr uint16_t maxReloadValue = 4095; /**< @brief Maximum reload value for IWDG. */
+		static constexpr uint16_t reloadKey = 0xAAAA; /**< @brief Reload key for IWDG. */
+		static constexpr uint16_t accessKey = 0x5555; /**< @brief Access key for IWDG. */
+		static constexpr uint16_t startKey = 0xCCCC; /**< @brief Start key for IWDG. */
+		static constexpr uint16_t maxReloadValue = 4095; /**< @brief Maximum reload value for IWDG. */
 
 		// ENUMS
+		/**
+		 * @brief IWDG input clock prescaler enum.
+		 * 
+		 */
 		enum class Prescaler_t : uint8_t {
 			Div4 = 0b000, /**< @brief IWDG clock prescaler 4. */
 			Div8 = 0b001, /**< @brief IWDG clock prescaler 8. */
@@ -146,84 +218,93 @@ namespace SWDT
 			Div256 = 0b110 /**< @brief IWDG clock prescaler 256. */
 		};
 
-		// VARIABLES
-		uint32_t freq = 32000; /**< @brief IWDG input clock freq. */
-
 		// METHOD DEFINITIONS
 		/**
 		 * @brief Enable register write access.
 		 * 
 		 * @return No return value.
 		 */
-		inline void enableAccess(void) const
+		inline void enableAccess(void)
 		{
 			// Write access value to KR register to unlock register protection
 			IWDG->KR = accessKey;
 		}
 
-		void setReloadValue(uint32_t value) const
+		/**
+		 * @brief Set IWDG reload value.
+		 * 
+		 * @param value Reload value(max. \ref maxReloadValue)
+		 * @return No return value.
+		 */
+		void setReloadValue(uint32_t value)
 		{
-			if (value > maxReloadValue)
-			{
-				value = maxReloadValue;
-			}
+			// Prevent reload value to go over its maximum
+			SML::limit<uint32_t>(value, 1, maxReloadValue);
+
+			// Wait if reload value update is ongoing
+		//	while (IWDG->SR & IWDG_SR_RVU);
+
+			// Enable write access
+			enableAccess();	
 
 			// Write new reload value
 			IWDG->RLR = value;
 		}
 
-		void setPrescaler(const Prescaler_t prescaler) const
+		/**
+		 * @brief Set IWDG input clock prescaler.
+		 * 
+		 * @param prescaler Prescaler value. See \ref Prescaler_t
+		 */
+		void setPrescaler(const Prescaler_t prescaler)
 		{
 			// Wait if prescaler update is ongoing
-			while (IWDG->SR & IWDG_SR_PVU);
+		//	while (IWDG->SR & IWDG_SR_PVU);
 
 			// Enable write access
 			enableAccess();
 
 			// Set new prescaler
 			IWDG->PR = (uint8_t)prescaler;
-
-			// Feed watchdog
-			feed();
 		}
 	};
 
 	// CLASS FOR STM32 WWDG
-	class WWDG : SWDT<WWDG>
+	class SWDT_WWDG : public SWDT<SWDT_WWDG>
 	{
 		public:
-		WWDG(void)
+		SWDT_WWDG(uint32_t timeout) : SWDT(timeout)
 		{
 
 		}
 
-		~WWDG(void)
+		~SWDT_WWDG(void)
 		{
 
 		}
 
-		void start(void) const
+		void init(void)
 		{
 
 		}
 
-		void feed(void) const
+		void start(void)
 		{
 
 		}
 
-		void setTimeout(uint32_t timeout) const
+		void feed(void)
 		{
 
 		}
 
-		void setInputFreq(uint32_t value)
+		void setTimeout(uint32_t timeout)
 		{
 
-		}		
-
-		private:
+		}
 	};
+
+	/** @endcond */
 };
 
 /**@}*/
